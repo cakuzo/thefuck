@@ -1,16 +1,17 @@
 import re
+from thefuck.utils import get_all_matched_commands, replace_command
+from thefuck.specific.git import git_support
 
 
-def match(command, settings):
-    return ('git' in command.script
-            and " is not a git command. See 'git --help'." in command.stderr
+@git_support
+def match(command):
+    return (" is not a git command. See 'git --help'." in command.stderr
             and 'Did you mean' in command.stderr)
 
 
-def get_new_command(command, settings):
+@git_support
+def get_new_command(command):
     broken_cmd = re.findall(r"git: '([^']*)' is not a git command",
                             command.stderr)[0]
-    new_cmd = re.findall(r'Did you mean[^\n]*\n\s*([^\n]*)',
-                         command.stderr)[0]
-    return command.script.replace(broken_cmd, new_cmd, 1)
-
+    matched = get_all_matched_commands(command.stderr)
+    return replace_command(command, broken_cmd, matched)

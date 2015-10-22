@@ -1,30 +1,21 @@
 from difflib import get_close_matches
-import os
-from pathlib import Path
+from thefuck.utils import get_all_executables
+from thefuck.specific.sudo import sudo_support
 
 
-def _safe(fn, fallback):
-    try:
-        return fn()
-    except OSError:
-        return fallback
-
-
-def _get_all_bins():
-    return [exe.name
-            for path in os.environ.get('PATH', '').split(':')
-            for exe in _safe(lambda: list(Path(path).iterdir()), [])
-            if not _safe(exe.is_dir, True)]
-
-
-def match(command, settings):
+@sudo_support
+def match(command):
     return 'not found' in command.stderr and \
            bool(get_close_matches(command.script.split(' ')[0],
-                                  _get_all_bins()))
+                                  get_all_executables()))
 
 
-def get_new_command(command, settings):
+@sudo_support
+def get_new_command(command):
     old_command = command.script.split(' ')[0]
-    new_command = get_close_matches(old_command,
-                                    _get_all_bins())[0]
-    return ' '.join([new_command] + command.script.split(' ')[1:])
+    new_cmds = get_close_matches(old_command, get_all_executables(), cutoff=0.1)
+    return [' '.join([new_command] + command.script.split(' ')[1:])
+            for new_command in new_cmds]
+
+
+priority = 3000
